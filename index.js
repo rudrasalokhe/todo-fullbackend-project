@@ -1,14 +1,15 @@
 const express = require("express");
-const app = express();
-const jwt = require('jsonwebtoken');
+const { UserModel, TodoModel } = require("./db");
+const { auth, JWT_SECRET } = require("./auth");
+const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const { UserModel, TodoModel } = require('./db');
-const JWT_SECRET = "tanvi";
+
+mongoose.connect("")
+
+const app = express();
 app.use(express.json());
-mongoose.connect("mongodb+srv://rudrasalokhe05:ojsmuiC0bCDcQAFB@cluster0.eix9d.mongodb.net/TODO-APP-DATABASE")
-    .then(() => console.log("Connected to MongoDB"))
-    .catch(err => console.error("Could not connect to MongoDB", err));
-app.post('/signup', async (req, res) => {
+
+app.post("/signup", async function(req, res) {
     const email = req.body.email;
     const password = req.body.password;
     const name = req.body.name;
@@ -18,52 +19,65 @@ app.post('/signup', async (req, res) => {
         password: password,
         name: name
     });
-
+    
     res.json({
         message: "You are signed up"
-    });
+    })
 });
 
-// Signin route
-app.post('/signin', async (req, res) => {
+
+app.post("/signin", async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
 
-    const user = await UserModel.findOne({
+    const response = await UserModel.findOne({
         email: email,
-        password: password
+        password: password,
     });
 
-    if (user) {
+    if (response) {
         const token = jwt.sign({
-            id: user._id
+            id: response._id.toString()
         }, JWT_SECRET);
 
         res.json({
-            token: token
-        });
+            token
+        })
     } else {
-        res.json({
-            message: "Invalid Username and Password"
-        });
+        res.status(403).json({
+            message: "Incorrect creds"
+        })
     }
 });
 
-// Todo route (placeholder)
-app.post('/todo', async (req, res) => {
-    res.json({
-        message: "Todo route"
+
+app.post("/todo", auth, async function(req, res) {
+    const userId = req.userId;
+    const title = req.body.title;
+    const done = req.body.done;
+
+    await TodoModel.create({
+        userId,
+        title,
+        done
     });
+
+    res.json({
+        message: "Todo created"
+    })
 });
 
-// Todos route (placeholder)
-app.post('/todos', async (req, res) => {
-    res.json({
-        message: "Todos route"
+
+app.get("/todos", auth, async function(req, res) {
+    const userId = req.userId;
+
+    const todos = await TodoModel.find({
+        userId
     });
+
+    res.json({
+        todos
+    })
 });
 
-// Start the server
-app.listen(3001, () => {
-    console.log("Server is running on port 3000");
-});
+app.listen(3002);
